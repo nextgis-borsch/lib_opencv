@@ -618,9 +618,7 @@ install(FILES ${OPENCV_LICENSE_FILE}
 # ----------------------------------------------------------------------------
 # Summary:
 # ----------------------------------------------------------------------------
-if(NOT SUPPRESS_VERBOSE_OUTPUT)
-    include(summary)
-endif()
+include(summary)
 
 ocv_cmake_hook(POST_FINALIZE)
 
