@@ -420,7 +420,7 @@ find_anyproject(Qt5 DEFAULT ${WITH_QT} COMPONENT Core Gui Widgets Test Concurren
 if(QT5_FOUND)
     set(HAVE_QT5 ON)
     set(HAVE_QT  ON)
-if(NOT QT5_FOUND AND WITH_QT)
+else()
     # Try Qt4
     find_anyproject(Qt4 DEFAULT ON COMPONENT QtCore QtGui QtTest)
     if(QT4_FOUND)
