@@ -24,6 +24,11 @@ set(TARGET_LINK_LIB)
 set(WITHOPT ${WITHOPT} "")
 set(EXPORTS_PATHS)
 
+if(ANDROID)
+    # Workaround for Android studio android.toolchain.cmake
+    set(CMAKE_FIND_ROOT_PATH "${ANDROID_TOOLCHAIN_ROOT}/bin" "${ANDROID_TOOLCHAIN_ROOT}/${ANDROID_TOOLCHAIN_MACHINE_NAME}" "${ANDROID_SYSROOT}" "${CMAKE_INSTALL_PREFIX}" "${CMAKE_INSTALL_PREFIX}/share")
+endif()
+
 include(CMakeParseArguments)
 
 function(find_anyproject name)
@@ -198,6 +203,9 @@ function(find_anyproject name)
         include_directories(${${name}_INCLUDE_DIR})
     endif()
 
+    if(${UPPER_NAME} STREQUAL ZLIB AND BUILD_STATIC_LIBS AND UNIX)
+        set(TARGET_LINK_LIB ${TARGET_LINK_LIB} z)
+    else()
     if(${UPPER_NAME}_LIBRARIES)
         set(TARGET_LINK_LIB ${TARGET_LINK_LIB} ${${UPPER_NAME}_LIBRARIES})
     elseif(${UPPER_NAME}_LIBRARY)
@@ -206,6 +214,7 @@ function(find_anyproject name)
         set(TARGET_LINK_LIB ${TARGET_LINK_LIB} ${${name}_LIBRARIES})
     elseif(${name}_LIBRARY)
         set(TARGET_LINK_LIB ${TARGET_LINK_LIB} ${${name}_LIBRARY})
+    endif()
     endif()
 
     set(TARGET_LINK_LIB ${TARGET_LINK_LIB} PARENT_SCOPE)

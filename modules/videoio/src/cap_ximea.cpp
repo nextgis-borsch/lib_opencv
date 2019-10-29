@@ -20,11 +20,11 @@ public:
     virtual bool open( int index );
     bool open( const char* deviceName );
     virtual void close();
-    virtual double getProperty(int) const;
-    virtual bool setProperty(int, double);
-    virtual bool grabFrame();
-    virtual IplImage* retrieveFrame(int);
-    virtual int getCaptureDomain() { return CV_CAP_XIAPI; } // Return the type of the capture object: CV_CAP_VFW, etc...
+    virtual double getProperty(int) const CV_OVERRIDE;
+    virtual bool setProperty(int, double) CV_OVERRIDE;
+    virtual bool grabFrame() CV_OVERRIDE;
+    virtual IplImage* retrieveFrame(int) CV_OVERRIDE;
+    virtual int getCaptureDomain() CV_OVERRIDE { return CV_CAP_XIAPI; }
 
 private:
     bool _open();
@@ -42,23 +42,23 @@ private:
 
 /**********************************************************************************/
 
-CvCapture* cvCreateCameraCapture_XIMEA( int index )
+cv::Ptr<cv::IVideoCapture> cv::create_XIMEA_capture_cam( int index )
 {
     CvCaptureCAM_XIMEA* capture = new CvCaptureCAM_XIMEA;
 
     if( capture->open( index ))
-        return capture;
+        return cv::makePtr<cv::LegacyCapture>(capture);
 
     delete capture;
     return 0;
 }
 
-CvCapture* cvCreateCameraCapture_XIMEA( const char* serialNumber )
+cv::Ptr<cv::IVideoCapture> cv::create_XIMEA_capture_file( const std::string &serialNumber )
 {
     CvCaptureCAM_XIMEA* capture = new CvCaptureCAM_XIMEA;
 
-    if( capture->open( serialNumber ))
-        return capture;
+    if( capture->open( serialNumber.c_str() ))
+        return cv::makePtr<cv::LegacyCapture>(capture);
 
     delete capture;
     return 0;

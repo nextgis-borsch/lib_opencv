@@ -19,13 +19,13 @@ class VideoCapture_IntelMFX : public cv::IVideoCapture
 {
 public:
     VideoCapture_IntelMFX(const cv::String &filename);
-    virtual ~VideoCapture_IntelMFX();
-    virtual double getProperty(int) const;
-    virtual bool setProperty(int, double);
-    virtual bool grabFrame();
-    virtual bool retrieveFrame(int, cv::OutputArray out);
-    virtual bool isOpened() const;
-    virtual int getCaptureDomain();
+    ~VideoCapture_IntelMFX();
+    double getProperty(int) const CV_OVERRIDE;
+    bool setProperty(int, double) CV_OVERRIDE;
+    bool grabFrame() CV_OVERRIDE;
+    bool retrieveFrame(int, cv::OutputArray out) CV_OVERRIDE;
+    bool isOpened() const CV_OVERRIDE;
+    int getCaptureDomain() CV_OVERRIDE;
 private:
     MFXVideoSession *session;
     Plugin *plugin;

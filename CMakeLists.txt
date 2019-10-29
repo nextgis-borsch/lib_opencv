@@ -46,8 +46,11 @@ set(PACKAGE_NAME "opencv")
 set(PACKAGE_STRING "${PACKAGE_NAME} ${VERSION}")
 set(PACKAGE_TARNAME ${PROJECT_NANE})
 set(MIN_VER_CUDA 6.5)
-set(MIN_VER_PYTHON2 2.6)
+set(MIN_VER_CUDNN 6)
+set(MIN_VER_PYTHON2 2.7)
 set(MIN_VER_PYTHON3 3.2)
+set(MIN_VER_ZLIB 1.2.3)
+set(MIN_VER_GTK 2.18.0)
 
 # if(OSX_FRAMEWORK AND (BUILD_SHARED_LIBS OR BUILD_STATIC_LIBS))
 #   message(FATAL_ERROR "Only OSX_FRAMEWORK key or any or both BUILD_SHARED_LIBS
@@ -56,6 +59,11 @@ set(MIN_VER_PYTHON3 3.2)
 
 if(OSX_FRAMEWORK)
     set(BUILD_SHARED_LIBS ON CACHE INTERNAL "")
+    set(CV_CLANG 1 CACHE INTERNAL "")
+    set(CMAKE_COMPILER_IS_CLANGCXX 1 CACHE INTERNAL "")
+    set(CMAKE_COMPILER_IS_CLANGCC 1 CACHE INTERNAL "")
+    set(OPENCV_SUPPRESS_DEPRECATIONS 1)
+    set(OPENCV_INCLUDE_DIR_APPEND_MODULE_SRC 1)
     set(INSTALL_BIN_DIR "bin" CACHE INTERNAL "Installation directory for executables" FORCE)
     set(INSTALL_LIB_DIR "Library/Frameworks" CACHE INTERNAL "Installation directory for libraries" FORCE)
     set(INSTALL_INC_DIR "${INSTALL_LIB_DIR}/${PACKAGE_NAME}.framework/Headers" CACHE INTERNAL "Installation directory for headers" FORCE)
@@ -124,28 +132,43 @@ if(DEFINED CMAKE_DEBUG_POSTFIX)
   set(OPENCV_DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 endif()
 
+#
+# Configure CMake policies
+#
 if(POLICY CMP0026)
   cmake_policy(SET CMP0026 NEW)
 endif()
 
 if(POLICY CMP0042)
-  cmake_policy(SET CMP0042 NEW)
+  cmake_policy(SET CMP0042 NEW)  # CMake 3.0+ (2.8.12): MacOS "@rpath" in target's install name
 endif()
 
 if(POLICY CMP0046)
-  cmake_policy(SET CMP0046 NEW)
+  cmake_policy(SET CMP0046 NEW)  # warn about non-existed dependencies
 endif()
 
 if(POLICY CMP0051)
   cmake_policy(SET CMP0051 NEW)
 endif()
 
+if(POLICY CMP0054)  # CMake 3.1: Only interpret if() arguments as variables or keywords when unquoted.
+  cmake_policy(SET CMP0054 NEW)
+endif()
+
 if(POLICY CMP0056)
-  cmake_policy(SET CMP0056 NEW)
+  cmake_policy(SET CMP0056 NEW)  # try_compile(): link flags
 endif()
 
 if(POLICY CMP0067)
-  cmake_policy(SET CMP0067 NEW)
+  cmake_policy(SET CMP0067 NEW)  # CMake 3.8: try_compile(): honor language standard variables (like C++11)
+endif()
+
+if(POLICY CMP0068)
+  cmake_policy(SET CMP0068 NEW)  # CMake 3.9+: `RPATH` settings on macOS do not affect `install_name`.
+endif()
+
+if(POLICY CMP0075)
+  cmake_policy(SET CMP0075 NEW)  # CMake 3.12+: Include file check macros honor `CMAKE_REQUIRED_LIBRARIES`
 endif()
 
 option(ENABLE_PIC "Generate position independent code (necessary for shared libraries)" TRUE)
@@ -331,9 +354,9 @@ ocv_include_directories(${OPENCV_CONFIG_FILE_INCLUDE_DIR})
 ocv_cmake_hook(POST_CMAKE_BUILD_OPTIONS)
 
 # --- Python Support ---
-if(NOT IOS)
-  include(cmake/OpenCVDetectPython.cmake)
-endif()
+# if(NOT IOS)
+#   include(cmake/OpenCVDetectPython.cmake)
+# endif()
 
 include(cmake/OpenCVCompilerOptions.cmake)
 
@@ -416,6 +439,11 @@ if(TIFF_FOUND)
     set(HAVE_TIFF YES)
 endif()
 
+find_anyproject(WEBP DEFAULT ${WITH_WEBP})
+if(WEBP_FOUND)
+    set(HAVE_WEBP YES)
+endif()
+
 find_anyproject(Qt5 DEFAULT ${WITH_QT} COMPONENT Core Gui Widgets Test Concurrent)
 if(QT5_FOUND)
     set(HAVE_QT5 ON)
@@ -436,44 +464,49 @@ endif()
 # endif()
 #
 # include(cmake/OpenCVFindLibsGrfmt.cmake)
-# include(cmake/OpenCVFindLibsGUI.cmake)
+include(cmake/OpenCVFindLibsGUI.cmake)
 # include(cmake/OpenCVFindLibsVideo.cmake)
 # include(cmake/OpenCVFindLibsPerf.cmake)
 # include(cmake/OpenCVFindLAPACK.cmake)
 # include(cmake/OpenCVFindProtobuf.cmake)
 
 # --- OpenCL ---
-find_anyproject(OpenCL)
+if(WITH_OPENCL)
+  include(cmake/OpenCVDetectOpenCL.cmake)
+endif()
 
 # --- Halide ---
-find_anyproject(Halide)
+if(WITH_HALIDE)
+  include(cmake/OpenCVDetectHalide.cmake)
+endif()
+
+# --- VkCom ---
+if(WITH_VULKAN)
+  include(cmake/OpenCVDetectVulkan.cmake)
+endif()
 
 # --- Inference Engine ---
-# TODO:
-# if(WITH_INF_ENGINE)
-#   include(cmake/OpenCVDetectInferenceEngine.cmake)
-# endif()
+if(WITH_INF_ENGINE)
+  include(cmake/OpenCVDetectInferenceEngine.cmake)
+endif()
 
 # --- DirectX ---
 if(WITH_DIRECTX)
   include(cmake/OpenCVDetectDirectX.cmake)
 endif()
 
-# --- Matlab/Octave ---
-# TODO:
-# if(WITH_MATLAB)
-#   include(cmake/OpenCVFindMatlab.cmake)
+if(WITH_VTK)
+  include(cmake/OpenCVDetectVTK.cmake)
+endif()
+
+if(WITH_OPENVX)
+  include(cmake/FindOpenVX.cmake)
+endif()
+
+# if(WITH_QUIRC)
+#   add_subdirectory(3rdparty/quirc)
+#   set(HAVE_QUIRC TRUE)
 # endif()
-
-# TODO:
-# if(WITH_VTK)
-#   include(cmake/OpenCVDetectVTK.cmake)
-# endif()
-
-find_anyproject(OpenVX)
-
-find_anyproject(CUDA)
-
 # ----------------------------------------------------------------------------
 # OpenCV HAL
 # ----------------------------------------------------------------------------
