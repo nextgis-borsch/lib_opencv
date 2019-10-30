@@ -3,8 +3,8 @@
 # Purpose:  CMake build scripts
 # Author:   Dmitry Baryshnikov, dmitry.baryshnikov@nextgis.com
 ################################################################################
-# Copyright (C) 2018, NextGIS <info@nextgis.com>
-# Copyright (C) 2018 Dmitry Baryshnikov
+# Copyright (C) 2018-2019, NextGIS <info@nextgis.com>
+# Copyright (C) 2018-2019 Dmitry Baryshnikov
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -56,18 +56,20 @@ set(MIN_VER_GTK 2.18.0)
 #   message(FATAL_ERROR "Only OSX_FRAMEWORK key or any or both BUILD_SHARED_LIBS
 #                        and BUILD_STATIC_LIBS keys are permitted")
 # endif()
+set(OPENCV_SUPPRESS_DEPRECATIONS 1)
+set(OPENCV_INCLUDE_DIR_APPEND_MODULE_SRC 1)
 
 if(OSX_FRAMEWORK)
     set(BUILD_SHARED_LIBS ON CACHE INTERNAL "")
     set(CV_CLANG 1 CACHE INTERNAL "")
     set(CMAKE_COMPILER_IS_CLANGCXX 1 CACHE INTERNAL "")
     set(CMAKE_COMPILER_IS_CLANGCC 1 CACHE INTERNAL "")
-    set(OPENCV_SUPPRESS_DEPRECATIONS 1)
-    set(OPENCV_INCLUDE_DIR_APPEND_MODULE_SRC 1)
+    
     set(INSTALL_BIN_DIR "bin" CACHE INTERNAL "Installation directory for executables" FORCE)
     set(INSTALL_LIB_DIR "Library/Frameworks" CACHE INTERNAL "Installation directory for libraries" FORCE)
     set(INSTALL_INC_DIR "${INSTALL_LIB_DIR}/${PACKAGE_NAME}.framework/Headers" CACHE INTERNAL "Installation directory for headers" FORCE)
     set(INSTALL_CMAKECONF_DIR ${INSTALL_LIB_DIR}/${PACKAGE_NAME}.framework/Resources/CMake CACHE INTERNAL "Installation directory for cmake config files" FORCE)
+    set(OPENCV_LICENSES_INSTALL_PATH ${INSTALL_LIB_DIR}/${PACKAGE_NAME}.framework/Resources CACHE INTERNAL "Installation directory for licenses" FORCE)
 
     set(SKIP_INSTALL_HEADERS ON)
     set(SKIP_INSTALL_EXECUTABLES OFF)
@@ -83,6 +85,7 @@ else()
     set(INSTALL_INC_DIR ${CMAKE_INSTALL_INCLUDEDIR} CACHE INTERNAL "Installation directory for headers" FORCE)
     set(INSTALL_SHARE_DIR ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME} CACHE INTERNAL "Installation directory for share data" FORCE)
     set(INSTALL_CMAKECONF_DIR ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/CMake CACHE INTERNAL "Installation directory for cmake config files" FORCE)
+    set(OPENCV_LICENSES_INSTALL_PATH ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME} CACHE INTERNAL "Installation directory for licenses" FORCE)
 endif()
 
 set(OPENCV_INCLUDE_INSTALL_PATH ${INSTALL_INC_DIR})
