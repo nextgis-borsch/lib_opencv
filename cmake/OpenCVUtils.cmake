@@ -1257,19 +1257,19 @@ endfunction()
 
 # ocv_install_3rdparty_licenses(<library-name> <filename1> [<filename2> ..])
 function(ocv_install_3rdparty_licenses library)
-  foreach(filename ${ARGN})
-    set(filepath "${filename}")
-    if(NOT IS_ABSOLUTE "${filepath}")
-      set(filepath "${CMAKE_CURRENT_LIST_DIR}/${filepath}")
-    endif()
-    get_filename_component(name "${filename}" NAME)
-    install(
-      FILES "${filepath}"
-      DESTINATION "${OPENCV_LICENSES_INSTALL_PATH}"
-      COMPONENT licenses
-      RENAME "${library}-${name}"
-    )
-  endforeach()
+  # foreach(filename ${ARGN})
+  #   set(filepath "${filename}")
+  #   if(NOT IS_ABSOLUTE "${filepath}")
+  #     set(filepath "${CMAKE_CURRENT_LIST_DIR}/${filepath}")
+  #   endif()
+  #   get_filename_component(name "${filename}" NAME)
+  #   install(
+  #     FILES "${filepath}"
+  #     DESTINATION "${OPENCV_LICENSES_INSTALL_PATH}"
+  #     COMPONENT licenses
+  #     RENAME "${library}-${name}"
+  #   )
+  # endforeach()
 endfunction()
 
 # read set of version defines from the header file
