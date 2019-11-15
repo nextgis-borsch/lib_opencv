@@ -68,6 +68,10 @@ if(BUILD_opencv_highgui AND OPENCV_MODULE_opencv_highgui_IS_PART_OF_WORLD)
   ocv_highgui_configure_target()
 endif()
 
+# Create the <Package>Config.cmake file
+configure_file(${CMAKE_SOURCE_DIR}/cmake/PackageConfig.cmake.in
+    ${PROJECT_BINARY_DIR}/${PACKAGE_UPPER_NAME}Config.cmake @ONLY)
+
 if(NOT SKIP_INSTALL_EXPORT AND NOT SKIP_INSTALL_ALL)
     # Install the <Package>Config.cmake
     install(FILES

@@ -668,17 +668,13 @@ target_include_directories(${LIB_NAME} INTERFACE
 
 # Add all targets to the build-tree export set
 export(TARGETS ${LIB_NAME}
-    FILE ${PROJECT_BINARY_DIR}/${PACKAGE_UPPER_NAME}Targets.cmake)
+    FILE ${PROJECT_BINARY_DIR}/OpenCVModules.cmake)
 
 if(REGISTER_PACKAGE)
     # Export the package for use from the build-tree
     # (this registers the build-tree with a global CMake-registry)
     export(PACKAGE ${PACKAGE_UPPER_NAME})
 endif()
-
-# Create the <Package>Config.cmake file
-configure_file(cmake/PackageConfig.cmake.in
-    ${PROJECT_BINARY_DIR}/${PACKAGE_UPPER_NAME}Config.cmake @ONLY)
 
 # ----------------------------------------------------------------------------
 # CPack stuff
