@@ -67,3 +67,13 @@ endif()
 if(BUILD_opencv_highgui AND OPENCV_MODULE_opencv_highgui_IS_PART_OF_WORLD)
   ocv_highgui_configure_target()
 endif()
+
+if(NOT SKIP_INSTALL_EXPORT AND NOT SKIP_INSTALL_ALL)
+    # Install the <Package>Config.cmake
+    install(FILES
+      ${PROJECT_BINARY_DIR}/${PACKAGE_UPPER_NAME}Config.cmake
+      DESTINATION ${INSTALL_CMAKECONF_DIR} COMPONENT dev)
+
+    # Install the export set for use with the install-tree
+    install(EXPORT OpenCVModules DESTINATION ${INSTALL_CMAKECONF_DIR} COMPONENT dev)
+endif()

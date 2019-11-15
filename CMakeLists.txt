@@ -74,7 +74,7 @@ if(OSX_FRAMEWORK)
     set(SKIP_INSTALL_HEADERS ON)
     set(SKIP_INSTALL_EXECUTABLES OFF)
     set(SKIP_INSTALL_FILES ON)
-    set(SKIP_INSTALL_EXPORT ON)
+    set(SKIP_INSTALL_EXPORT OFF)
 
     set(CMAKE_MACOSX_RPATH ON)
 else()
@@ -679,16 +679,6 @@ endif()
 # Create the <Package>Config.cmake file
 configure_file(cmake/PackageConfig.cmake.in
     ${PROJECT_BINARY_DIR}/${PACKAGE_UPPER_NAME}Config.cmake @ONLY)
-
-if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
-    # Install the <Package>Config.cmake
-    install(FILES
-      ${PROJECT_BINARY_DIR}/${PACKAGE_UPPER_NAME}Config.cmake
-      DESTINATION ${INSTALL_CMAKECONF_DIR} COMPONENT dev)
-
-    # Install the export set for use with the install-tree
-    install(EXPORT OpenCVModules DESTINATION ${INSTALL_CMAKECONF_DIR} COMPONENT dev)
-endif()
 
 # ----------------------------------------------------------------------------
 # CPack stuff
