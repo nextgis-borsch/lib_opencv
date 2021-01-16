@@ -49,6 +49,7 @@ list(APPEND CPU_ALL_OPTIMIZATIONS "AVX512_COMMON;AVX512_KNL;AVX512_KNM;AVX512_SK
 list(APPEND CPU_ALL_OPTIMIZATIONS NEON VFPV3 FP16)
 list(APPEND CPU_ALL_OPTIMIZATIONS MSA)
 list(APPEND CPU_ALL_OPTIMIZATIONS VSX VSX3)
+list(APPEND CPU_ALL_OPTIMIZATIONS RVV)
 list(REMOVE_DUPLICATES CPU_ALL_OPTIMIZATIONS)
 
 ocv_update(CPU_VFPV3_FEATURE_ALIAS "")
@@ -101,6 +102,8 @@ ocv_optimization_process_obsolete_option(ENABLE_VFPV3 VFPV3 OFF)
 ocv_optimization_process_obsolete_option(ENABLE_NEON NEON OFF)
 
 ocv_optimization_process_obsolete_option(ENABLE_VSX VSX ON)
+
+ocv_optimization_process_obsolete_option(ENABLE_RVV RVV OFF)
 
 macro(ocv_is_optimization_in_list resultvar check_opt)
   set(__checked "")
@@ -288,7 +291,7 @@ if(X86 OR X86_64)
     ocv_update(CPU_AVX2_FLAGS_ON "/arch:AVX2")
     ocv_update(CPU_AVX_FLAGS_ON "/arch:AVX")
     ocv_update(CPU_FP16_FLAGS_ON "/arch:AVX")
-    if(NOT MSVC64)
+    if(NOT X86_64)
       # 64-bit MSVC compiler uses SSE/SSE2 by default
       ocv_update(CPU_SSE_FLAGS_ON "/arch:SSE")
       ocv_update(CPU_SSE_SUPPORTED ON)
@@ -306,7 +309,7 @@ if(X86 OR X86_64)
 
   if(NOT DEFINED CPU_DISPATCH)
     if(X86_64)
-      set(CPU_DISPATCH "SSE4_1;SSE4_2;AVX;FP16;AVX2" CACHE STRING "${HELP_CPU_DISPATCH}") # ;AVX512_SKX
+      set(CPU_DISPATCH "SSE4_1;SSE4_2;AVX;FP16;AVX2;AVX512_SKX" CACHE STRING "${HELP_CPU_DISPATCH}")
     else()
       set(CPU_DISPATCH "SSE4_1;SSE4_2;AVX;FP16" CACHE STRING "${HELP_CPU_DISPATCH}")
     endif()
@@ -346,7 +349,7 @@ elseif(MIPS)
   ocv_update(CPU_MSA_TEST_FILE "${OpenCV_SOURCE_DIR}/cmake/checks/cpu_msa.cpp")
   ocv_update(CPU_KNOWN_OPTIMIZATIONS "MSA")
   ocv_update(CPU_MSA_FLAGS_ON "-mmsa")
-  set(CPU_BASELINE "MSA" CACHE STRING "${HELP_CPU_BASELINE}")
+  set(CPU_BASELINE "DETECT" CACHE STRING "${HELP_CPU_BASELINE}")
 elseif(PPC64LE)
   ocv_update(CPU_KNOWN_OPTIMIZATIONS "VSX;VSX3")
   ocv_update(CPU_VSX_TEST_FILE "${OpenCV_SOURCE_DIR}/cmake/checks/cpu_vsx.cpp")
@@ -366,6 +369,14 @@ elseif(PPC64LE)
 
   set(CPU_DISPATCH "VSX3" CACHE STRING "${HELP_CPU_DISPATCH}")
   set(CPU_BASELINE "VSX" CACHE STRING "${HELP_CPU_BASELINE}")
+
+elseif(RISCV)
+  ocv_update(CPU_RVV_TEST_FILE "${OpenCV_SOURCE_DIR}/cmake/checks/cpu_rvv.cpp")
+  ocv_update(CPU_KNOWN_OPTIMIZATIONS "RVV")
+  ocv_update(CPU_RVV_FLAGS_ON "")
+  set(CPU_DISPATCH "RVV" CACHE STRING "${HELP_CPU_DISPATCH}")
+  set(CPU_BASELINE "RVV" CACHE STRING "${HELP_CPU_BASELINE}")
+
 endif()
 
 # Helper values for cmake-gui
@@ -714,7 +725,10 @@ macro(ocv_compiler_optimization_process_sources SOURCES_VAR_NAME LIBS_VAR_NAME T
   foreach(OPT ${CPU_DISPATCH_FINAL})
     if(__result_${OPT})
 #message("${OPT}: ${__result_${OPT}}")
-      if(CMAKE_GENERATOR MATCHES "^Visual")
+      if(CMAKE_GENERATOR MATCHES "^Visual"
+          OR OPENCV_CMAKE_CPU_OPTIMIZATIONS_FORCE_TARGETS
+      )
+        # MSVS generator is not able to properly order compilation flags:
         # extra flags are added before common flags, so switching between optimizations doesn't work correctly
         # Also CMAKE_CXX_FLAGS doesn't work (it is directory-based, so add_subdirectory is required)
         add_library(${TARGET_BASE_NAME}_${OPT} OBJECT ${__result_${OPT}})

@@ -2579,7 +2579,7 @@ TEST(Core_CheckRange_INT_MAX, accuracy)
 TEST(Core_CheckRange_INT_MAX1, accuracy)
 {
     cv::Mat m(3, 3, CV_32SC1, cv::Scalar(INT_MAX));
-    ASSERT_TRUE( cv::checkRange(m, true, 0, 0, INT_MAX+1.0f) );
+    ASSERT_TRUE( cv::checkRange(m, true, 0, 0, (float)((double)INT_MAX+1.0f)) );
     ASSERT_TRUE( cv::checkRange(m) );
 }
 
@@ -2946,6 +2946,34 @@ TEST(Core_KMeans, compactness)
         {
             EXPECT_DOUBLE_EQ(compactness, 0.0);
         }
+    }
+}
+
+TEST(Core_KMeans, bad_input)
+{
+    const int N = 100;
+    const int attempts = 4;
+    const TermCriteria crit = TermCriteria(TermCriteria::COUNT, 5, 0); // low number of iterations
+    const int K = 3;
+    Mat data(N, 1, CV_32FC2);
+    cv::randu(data, Scalar(-200, -200), Scalar(200, 200));
+    {
+        SCOPED_TRACE("Huge value");
+        data.at<Vec2f>(10, 0) = Vec2f(1e20f, 0);
+        Mat labels, centers;
+        EXPECT_ANY_THROW(kmeans(data, K, labels, crit, attempts, KMEANS_PP_CENTERS, centers));
+    }
+    {
+        SCOPED_TRACE("Negative value");
+        data.at<Vec2f>(10, 0) = Vec2f(0, -1e20f);
+        Mat labels, centers;
+        EXPECT_ANY_THROW(kmeans(data, K, labels, crit, attempts, KMEANS_PP_CENTERS, centers));
+    }
+    {
+        SCOPED_TRACE("NaN");
+        data.at<Vec2f>(10, 0) = Vec2f(0, std::numeric_limits<float>::quiet_NaN());
+        Mat labels, centers;
+        EXPECT_ANY_THROW(kmeans(data, K, labels, crit, attempts, KMEANS_PP_CENTERS, centers));
     }
 }
 

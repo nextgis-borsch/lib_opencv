@@ -612,19 +612,33 @@ static std::vector< Ptr<CvWindow> > g_windows;
 CV_IMPL int cvInitSystem( int argc, char** argv )
 {
     static int wasInitialized = 0;
+    static bool hasError = false;
 
     // check initialization status
     if( !wasInitialized )
     {
-        gtk_init( &argc, &argv );
+        if (!gtk_init_check(&argc, &argv))
+        {
+            hasError = true;
+            wasInitialized = true;
+            CV_Error(Error::StsError, "Can't initialize GTK backend");
+        }
+
         setlocale(LC_NUMERIC,"C");
 
         #ifdef HAVE_OPENGL
-            gtk_gl_init(&argc, &argv);
+            if (!gtk_gl_init_check(&argc, &argv))
+            {
+                hasError = true;
+                wasInitialized = true;
+                CV_Error(Error::StsError, "Can't initialize GTK-OpenGL backend");
+            }
         #endif
 
         wasInitialized = 1;
     }
+    if (hasError)
+       CV_Error(Error::StsError, "GTK backend is not available");
 
     return 0;
 }
@@ -634,10 +648,13 @@ CV_IMPL int cvStartWindowThread(){
     cvInitSystem(0,NULL);
     if (!thread_started)
     {
-       if (!g_thread_supported ()) {
+#if !GLIB_CHECK_VERSION(2, 32, 0)  // https://github.com/GNOME/glib/blame/b4d58a7105bb9d75907233968bb534b38f9a6e43/glib/deprecated/gthread.h#L274
+       if (!g_thread_supported ())
+       {
            /* the GThread system wasn't inited, so init it */
            g_thread_init(NULL);
        }
+#endif
 
        (void)getWindowMutex();  // force mutex initialization
 
