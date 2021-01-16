@@ -8,7 +8,20 @@ include(CMakeParseArguments)
 function(ocv_cmake_dump_vars)
   set(OPENCV_SUPPRESS_DEPRECATIONS 1)  # suppress deprecation warnings from variable_watch() guards
   get_cmake_property(__variableNames VARIABLES)
-  cmake_parse_arguments(DUMP "" "TOFILE" "" ${ARGN})
+  cmake_parse_arguments(DUMP "FORCE" "TOFILE" "" ${ARGN})
+
+  # avoid generation of excessive logs with "--trace" or "--trace-expand" parameters
+  # Note: `-DCMAKE_TRACE_MODE=1` should be passed to CMake through command line. It is not a CMake buildin variable for now (2020-12)
+  #       Use `cmake . -UCMAKE_TRACE_MODE` to remove this variable from cache
+  if(CMAKE_TRACE_MODE AND NOT DUMP_FORCE)
+    if(DUMP_TOFILE)
+      file(WRITE ${CMAKE_BINARY_DIR}/${DUMP_TOFILE} "Skipped due to enabled CMAKE_TRACE_MODE")
+    else()
+      message(AUTHOR_WARNING "ocv_cmake_dump_vars() is skipped due to enabled CMAKE_TRACE_MODE")
+    endif()
+    return()
+  endif()
+
   set(regex "${DUMP_UNPARSED_ARGUMENTS}")
   string(TOLOWER "${regex}" regex_lower)
   set(__VARS "")
@@ -98,6 +111,30 @@ macro(ocv_update VAR)
   else()
     #ocv_debug_message("Preserve old value for ${VAR}: ${${VAR}}")
   endif()
+endmacro()
+
+function(_ocv_access_removed_variable VAR ACCESS)
+  if(ACCESS STREQUAL "MODIFIED_ACCESS")
+    set(OPENCV_SUPPRESS_MESSAGE_REMOVED_VARIABLE_${VAR} 1 PARENT_SCOPE)
+    return()
+  endif()
+  if(ACCESS MATCHES "UNKNOWN_.*"
+      AND NOT OPENCV_SUPPRESS_MESSAGE_REMOVED_VARIABLE
+      AND NOT OPENCV_SUPPRESS_MESSAGE_REMOVED_VARIABLE_${VAR}
+  )
+    message(WARNING "OpenCV: Variable has been removed from CMake scripts: ${VAR}")
+    set(OPENCV_SUPPRESS_MESSAGE_REMOVED_VARIABLE_${VAR} 1 PARENT_SCOPE)  # suppress similar messages
+  endif()
+endfunction()
+macro(ocv_declare_removed_variable VAR)
+  if(NOT DEFINED ${VAR})  # don't hit external variables
+    variable_watch(${VAR} _ocv_access_removed_variable)
+  endif()
+endmacro()
+macro(ocv_declare_removed_variables)
+  foreach(_var ${ARGN})
+    ocv_declare_removed_variable(${_var})
+  endforeach()
 endmacro()
 
 # Search packages for the host system instead of packages for the target system
@@ -288,9 +325,22 @@ function(ocv_append_target_property target prop)
   endif()
 endfunction()
 
+if(DEFINED OPENCV_DEPENDANT_TARGETS_LIST)
+  foreach(v ${OPENCV_DEPENDANT_TARGETS_LIST})
+    unset(${v} CACHE)
+  endforeach()
+  unset(OPENCV_DEPENDANT_TARGETS_LIST CACHE)
+endif()
+
 function(ocv_append_dependant_targets target)
   #ocv_debug_message("ocv_append_dependant_targets(${target} ${ARGN})")
   _ocv_fix_target(target)
+  list(FIND OPENCV_DEPENDANT_TARGETS_LIST "OPENCV_DEPENDANT_TARGETS_${target}" __id)
+  if(__id EQUAL -1)
+    list(APPEND OPENCV_DEPENDANT_TARGETS_LIST "OPENCV_DEPENDANT_TARGETS_${target}")
+    list(SORT OPENCV_DEPENDANT_TARGETS_LIST)
+    set(OPENCV_DEPENDANT_TARGETS_LIST "${OPENCV_DEPENDANT_TARGETS_LIST}" CACHE INTERNAL "")
+  endif()
   set(OPENCV_DEPENDANT_TARGETS_${target} "${OPENCV_DEPENDANT_TARGETS_${target}};${ARGN}" CACHE INTERNAL "" FORCE)
 endfunction()
 
@@ -363,9 +413,28 @@ macro(ocv_clear_vars)
   endforeach()
 endmacro()
 
+
+# Clears passed variables with INTERNAL type from CMake cache
+macro(ocv_clear_internal_cache_vars)
+  foreach(_var ${ARGN})
+    get_property(_propertySet CACHE ${_var} PROPERTY TYPE SET)
+    if(_propertySet)
+      get_property(_type CACHE ${_var} PROPERTY TYPE)
+      if(_type STREQUAL "INTERNAL")
+        message("Cleaning INTERNAL cached variable: ${_var}")
+        unset(${_var} CACHE)
+      endif()
+    endif()
+  endforeach()
+  unset(_propertySet)
+  unset(_type)
+endmacro()
+
+
 set(OCV_COMPILER_FAIL_REGEX
-    "command line option .* is valid for .* but not for C\\+\\+" # GNU
-    "command line option .* is valid for .* but not for C" # GNU
+    "argument .* is not valid"                  # GCC 9+ (including support of unicode quotes)
+    "command[- ]line option .* is valid for .* but not for C\\+\\+" # GNU
+    "command[- ]line option .* is valid for .* but not for C" # GNU
     "unrecognized .*option"                     # GNU
     "unknown .*option"                          # Clang
     "ignoring unknown option"                   # MSVC
@@ -502,7 +571,7 @@ macro(ocv_check_flag_support lang flag varname base_options)
 
   string(TOUPPER "${flag}" ${varname})
   string(REGEX REPLACE "^(/|-)" "HAVE_${_lang}_" ${varname} "${${varname}}")
-  string(REGEX REPLACE " -|-|=| |\\." "_" ${varname} "${${varname}}")
+  string(REGEX REPLACE " -|-|=| |\\.|," "_" ${varname} "${${varname}}")
 
   ocv_check_compiler_flag("${_lang}" "${base_options} ${flag}" ${${varname}} ${ARGN})
 endmacro()
@@ -898,11 +967,11 @@ macro(ocv_finalize_status)
     endif()
   endif()
 
-  # if(UNIX)
-  #   install(FILES "${OpenCV_SOURCE_DIR}/platforms/scripts/valgrind.supp"
-  #                 "${OpenCV_SOURCE_DIR}/platforms/scripts/valgrind_3rdparty.supp"
-  #           DESTINATION "${OPENCV_OTHER_INSTALL_PATH}" COMPONENT "dev")
-  # endif()
+#   if(UNIX)
+#     install(FILES "${OpenCV_SOURCE_DIR}/platforms/scripts/valgrind.supp"
+#                   "${OpenCV_SOURCE_DIR}/platforms/scripts/valgrind_3rdparty.supp"
+#             DESTINATION "${OPENCV_OTHER_INSTALL_PATH}" COMPONENT "dev")
+#   endif()
 endmacro()
 
 
@@ -1257,19 +1326,19 @@ endfunction()
 
 # ocv_install_3rdparty_licenses(<library-name> <filename1> [<filename2> ..])
 function(ocv_install_3rdparty_licenses library)
-  # foreach(filename ${ARGN})
-  #   set(filepath "${filename}")
-  #   if(NOT IS_ABSOLUTE "${filepath}")
-  #     set(filepath "${CMAKE_CURRENT_LIST_DIR}/${filepath}")
-  #   endif()
-  #   get_filename_component(name "${filename}" NAME)
-  #   install(
-  #     FILES "${filepath}"
-  #     DESTINATION "${OPENCV_LICENSES_INSTALL_PATH}"
-  #     COMPONENT licenses
-  #     RENAME "${library}-${name}"
-  #   )
-  # endforeach()
+#   foreach(filename ${ARGN})
+#     set(filepath "${filename}")
+#     if(NOT IS_ABSOLUTE "${filepath}")
+#       set(filepath "${CMAKE_CURRENT_LIST_DIR}/${filepath}")
+#     endif()
+#     get_filename_component(name "${filename}" NAME)
+#     install(
+#       FILES "${filepath}"
+#       DESTINATION "${OPENCV_LICENSES_INSTALL_PATH}"
+#       COMPONENT licenses
+#       RENAME "${library}-${name}"
+#     )
+#   endforeach()
 endfunction()
 
 # read set of version defines from the header file
@@ -1401,12 +1470,14 @@ endmacro()
 function(ocv_target_link_libraries target)
   set(LINK_DEPS ${ARGN})
   _ocv_fix_target(target)
-  set(LINK_MODE "LINK_PRIVATE")
+  set(LINK_MODE "PRIVATE")
   set(LINK_PENDING "")
   foreach(dep ${LINK_DEPS})
     if(" ${dep}" STREQUAL " ${target}")
       # prevent "link to itself" warning (world problem)
-    elseif(" ${dep}" STREQUAL " LINK_PRIVATE" OR " ${dep}" STREQUAL "LINK_PUBLIC")
+    elseif(" ${dep}" STREQUAL " LINK_PRIVATE" OR " ${dep}" STREQUAL " LINK_PUBLIC"  # deprecated
+        OR " ${dep}" STREQUAL " PRIVATE" OR " ${dep}" STREQUAL " PUBLIC" OR " ${dep}" STREQUAL " INTERFACE"
+    )
       if(NOT LINK_PENDING STREQUAL "")
         __ocv_push_target_link_libraries(${LINK_MODE} ${LINK_PENDING})
         set(LINK_PENDING "")
@@ -1482,25 +1553,31 @@ function(ocv_add_library target)
 
     set(CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG 1)
 
+    if(IOS AND NOT MAC_CATALYST)
+      set(OPENCV_APPLE_INFO_PLIST "${CMAKE_BINARY_DIR}/ios/Info.plist")
+    else()
+      set(OPENCV_APPLE_INFO_PLIST "${CMAKE_BINARY_DIR}/osx/Info.plist")
+    endif()
+
     set_target_properties(${target} PROPERTIES
-      FRAMEWORK TRUE
-      FRAMEWORK_VERSION "${FRAMEWORK_VERSION}"
-      MACOSX_FRAMEWORK_IDENTIFIER org.opencv
-      MACOSX_FRAMEWORK_SHORT_VERSION_STRING ${VERSION}
-      MACOSX_FRAMEWORK_BUNDLE_VERSION ${VERSION}
-      XCODE_ATTRIBUTE_INSTALL_PATH "@rpath"
-      # MACOSX_FRAMEWORK_INFO_PLIST ${CMAKE_BINARY_DIR}/ios/Info.plist
-      # "current version" in semantic format in Mach-O binary file
-      # VERSION ${OPENCV_LIBVERSION}
-      # "compatibility version" in semantic format in Mach-O binary file
-      # SOVERSION ${OPENCV_LIBVERSION}
-      # INSTALL_RPATH ""
-      # INSTALL_NAME_DIR "@rpath"
-      # BUILD_WITH_INSTALL_RPATH 1
-      LIBRARY_OUTPUT_NAME "opencv"
-      # XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
-      #PUBLIC_HEADER "${OPENCV_CONFIG_FILE_INCLUDE_DIR}/cvconfig.h"
-      #XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "iPhone Developer"
+        FRAMEWORK TRUE
+        FRAMEWORK_VERSION "${FRAMEWORK_VERSION}"
+        MACOSX_FRAMEWORK_IDENTIFIER org.opencv
+        MACOSX_FRAMEWORK_SHORT_VERSION_STRING ${VERSION}
+        MACOSX_FRAMEWORK_BUNDLE_VERSION ${VERSION}
+        XCODE_ATTRIBUTE_INSTALL_PATH "@rpath"
+    # MACOSX_FRAMEWORK_INFO_PLIST ${CMAKE_BINARY_DIR}/ios/Info.plist
+    # "current version" in semantic format in Mach-O binary file
+    # VERSION ${OPENCV_LIBVERSION}
+    # "compatibility version" in semantic format in Mach-O binary file
+    # SOVERSION ${OPENCV_LIBVERSION}
+    # INSTALL_RPATH ""
+    # INSTALL_NAME_DIR "@rpath"
+    # BUILD_WITH_INSTALL_RPATH 1
+        LIBRARY_OUTPUT_NAME "opencv"
+    # XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
+    #PUBLIC_HEADER "${OPENCV_CONFIG_FILE_INCLUDE_DIR}/cvconfig.h"
+    #XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "iPhone Developer"
     )
   endif()
 
@@ -1551,7 +1628,10 @@ macro(ocv_get_all_libs _modules _extra _3rdparty)
         endif()
         if (TARGET ${dep})
           get_target_property(_type ${dep} TYPE)
-          if(_type STREQUAL "STATIC_LIBRARY" AND BUILD_SHARED_LIBS OR _type STREQUAL "INTERFACE_LIBRARY")
+          if((_type STREQUAL "STATIC_LIBRARY" AND BUILD_SHARED_LIBS)
+              OR _type STREQUAL "INTERFACE_LIBRARY"
+              OR DEFINED OPENCV_MODULE_${dep}_LOCATION  # OpenCV modules
+          )
             # nothing
           else()
             get_target_property(_output ${dep} IMPORTED_LOCATION)
