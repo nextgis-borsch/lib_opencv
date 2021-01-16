@@ -1,5 +1,5 @@
-# set(VIDEOIO_PLUGIN_LIST "" CACHE STRING "List of videoio backends to be compiled as plugins (ffmpeg, gstreamer)")
-# set(VIDEOIO_ENABLE_PLUGINS "ON" CACHE BOOL "Allow building videoio plugin support")
+set(VIDEOIO_PLUGIN_LIST "" CACHE STRING "List of videoio backends to be compiled as plugins (ffmpeg, gstreamer, mfx, msmf or special value 'all')")
+set(VIDEOIO_ENABLE_PLUGINS "ON" CACHE BOOL "Allow building videoio plugin support")
 set(VIDEOIO_ENABLE_STRICT_PLUGIN_CHECK "ON" CACHE BOOL "Make sure OpenCV version is the same in plugin and host code")
 mark_as_advanced(VIDEOIO_PLUGIN_LIST VIDEOIO_ENABLE_PLUGINS VIDEOIO_ENABLE_STRICT_PLUGIN_CHECK)
 
@@ -10,7 +10,7 @@ if(NOT TARGET opencv_videoio_plugins)
   add_custom_target(opencv_videoio_plugins ALL)
 endif()
 
-ocv_add_module(videoio opencv_imgproc opencv_imgcodecs WRAP java python)
+ocv_add_module(videoio opencv_imgproc opencv_imgcodecs WRAP java objc python)
 
 set(videoio_hdrs ${CMAKE_CURRENT_LIST_DIR}/src/precomp.hpp)
 
@@ -31,45 +31,19 @@ file(GLOB videoio_ext_hdrs
   "${CMAKE_CURRENT_LIST_DIR}/include/opencv2/${name}/*.h"
   "${CMAKE_CURRENT_LIST_DIR}/include/opencv2/${name}/legacy/*.h")
 
+if(OPENCV_DEBUG_POSTFIX)
+  ocv_append_source_file_compile_definitions("${CMAKE_CURRENT_LIST_DIR}/src/backend_plugin.cpp" "DEBUG_POSTFIX=${OPENCV_DEBUG_POSTFIX}")
+endif()
+
 # Removing WinRT API headers by default
 list(REMOVE_ITEM videoio_ext_hdrs "${CMAKE_CURRENT_LIST_DIR}/include/opencv2/${name}/cap_winrt.hpp")
 
-if(DEFINED WINRT AND NOT DEFINED ENABLE_WINRT_MODE_NATIVE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /ZW")
-endif()
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/plugin.cmake)
 
-# Dependencies used by the implementation referenced
-# below are not available on WinRT 8.0.
-# Enabling it for WiRT 8.1+ only.
-if(DEFINED WINRT AND NOT DEFINED WINRT_8_0 AND NOT DEFINED ENABLE_WINRT_MODE_NATIVE)
-
-    # WinRT detected. Adding WinRT API header
-    message(STATUS "  ${name}: WinRT detected. Adding WinRT API header")
-    list(APPEND videoio_ext_hdrs "${CMAKE_CURRENT_LIST_DIR}/include/opencv2/${name}/cap_winrt.hpp")
-
-    # Adding WinRT internal sources and headers
-    list(APPEND videoio_srcs
-        ${CMAKE_CURRENT_LIST_DIR}/src/cap_winrt_capture.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/src/cap_winrt_bridge.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/src/cap_winrt_video.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/src/cap_winrt/CaptureFrameGrabber.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/src/cap_winrt/MediaStreamSink.cpp)
-    list(APPEND videoio_hdrs
-        ${CMAKE_CURRENT_LIST_DIR}/src/cap_winrt_capture.hpp
-        ${CMAKE_CURRENT_LIST_DIR}/src/cap_winrt_bridge.hpp
-        ${CMAKE_CURRENT_LIST_DIR}/src/cap_winrt_video.hpp
-        ${CMAKE_CURRENT_LIST_DIR}/src/cap_winrt/MFIncludes.hpp
-        ${CMAKE_CURRENT_LIST_DIR}/src/cap_winrt/CaptureFrameGrabber.hpp
-        ${CMAKE_CURRENT_LIST_DIR}/src/cap_winrt/MediaSink.hpp
-        ${CMAKE_CURRENT_LIST_DIR}/src/cap_winrt/MediaStreamSink.hpp)
-endif()
-
-# include(${CMAKE_CURRENT_LIST_DIR}/cmake/plugin.cmake)
-
-# set(tgts)
+set(tgts)
 
 # if(TARGET ocv.3rdparty.mediasdk)
-#   if("mfx" IN_LIST VIDEOIO_PLUGIN_LIST)
+#   if("mfx" IN_LIST VIDEOIO_PLUGIN_LIST OR VIDEOIO_PLUGIN_LIST STREQUAL "all")
 #     ocv_create_builtin_videoio_plugin("opencv_videoio_intel_mfx" ocv.3rdparty.mediasdk "cap_mfx_common.cpp" "cap_mfx_reader.cpp" "cap_mfx_writer.cpp" "cap_mfx_plugin.cpp")
 #   else()
 #     list(APPEND videoio_srcs
@@ -91,9 +65,13 @@ endif()
 # endif()
 
 # if(TARGET ocv.3rdparty.msmf)
-#   list(APPEND videoio_srcs ${CMAKE_CURRENT_LIST_DIR}/src/cap_msmf.hpp)
-#   list(APPEND videoio_srcs ${CMAKE_CURRENT_LIST_DIR}/src/cap_msmf.cpp)
-#   list(APPEND tgts ocv.3rdparty.msmf)
+#   if("msmf" IN_LIST VIDEOIO_PLUGIN_LIST OR VIDEOIO_PLUGIN_LIST STREQUAL "all")
+#     ocv_create_builtin_videoio_plugin("opencv_videoio_msmf" ocv.3rdparty.msmf "cap_msmf.cpp")
+#   else()
+#     list(APPEND videoio_srcs ${CMAKE_CURRENT_LIST_DIR}/src/cap_msmf.hpp)
+#     list(APPEND videoio_srcs ${CMAKE_CURRENT_LIST_DIR}/src/cap_msmf.cpp)
+#     list(APPEND tgts ocv.3rdparty.msmf)
+#   endif()
 # endif()
 
 # if(TARGET ocv.3rdparty.xine)
@@ -107,7 +85,7 @@ endif()
 # endif()
 
 # if(TARGET ocv.3rdparty.gstreamer)
-#   if("gstreamer" IN_LIST VIDEOIO_PLUGIN_LIST)
+#   if("gstreamer" IN_LIST VIDEOIO_PLUGIN_LIST OR VIDEOIO_PLUGIN_LIST STREQUAL "all")
 #     ocv_create_builtin_videoio_plugin("opencv_videoio_gstreamer" ocv.3rdparty.gstreamer "cap_gstreamer.cpp")
 #   else()
 #     list(APPEND videoio_srcs ${CMAKE_CURRENT_LIST_DIR}/src/cap_gstreamer.cpp)
@@ -130,10 +108,19 @@ endif()
 #   list(APPEND tgts ocv.3rdparty.ximea)
 # endif()
 
+# if(TARGET ocv.3rdparty.ueye)
+#   if("ueye" IN_LIST VIDEOIO_PLUGIN_LIST OR VIDEOIO_PLUGIN_LIST STREQUAL "all")
+#     ocv_create_builtin_videoio_plugin("opencv_videoio_ueye" ocv.3rdparty.ueye "cap_ueye.cpp")
+#   else()
+#     list(APPEND videoio_srcs ${CMAKE_CURRENT_LIST_DIR}/src/cap_ueye.cpp)
+#     list(APPEND tgts ocv.3rdparty.ueye)
+#   endif()
+# endif()
+
 # if(TARGET ocv.3rdparty.ffmpeg)
 #   if(HAVE_FFMPEG_WRAPPER)
 #     list(APPEND tgts ocv.3rdparty.ffmpeg)
-#   elseif("ffmpeg" IN_LIST VIDEOIO_PLUGIN_LIST)
+#   elseif("ffmpeg" IN_LIST VIDEOIO_PLUGIN_LIST OR VIDEOIO_PLUGIN_LIST STREQUAL "all")
 #     ocv_create_builtin_videoio_plugin("opencv_videoio_ffmpeg" ocv.3rdparty.ffmpeg "cap_ffmpeg.cpp")
 #   else()
 #     list(APPEND videoio_hdrs ${CMAKE_CURRENT_LIST_DIR}/src/cap_ffmpeg_impl.hpp)
@@ -191,20 +178,20 @@ ocv_create_module()
 ocv_add_accuracy_tests(${tgts})
 ocv_add_perf_tests(${tgts})
 
-# if(VIDEOIO_ENABLE_PLUGINS)
-#   ocv_target_compile_definitions(${the_module} PRIVATE ENABLE_PLUGINS)
-# endif()
+if(VIDEOIO_ENABLE_PLUGINS)
+  ocv_target_compile_definitions(${the_module} PRIVATE ENABLE_PLUGINS)
+endif()
 
-# if(VIDEOIO_ENABLE_STRICT_PLUGIN_CHECK)
-#   ocv_target_compile_definitions(${the_module} PRIVATE STRICT_PLUGIN_CHECK)
-# endif()
+if(VIDEOIO_ENABLE_STRICT_PLUGIN_CHECK)
+  ocv_target_compile_definitions(${the_module} PRIVATE STRICT_PLUGIN_CHECK)
+endif()
 
 ocv_target_link_libraries(${the_module} LINK_PRIVATE ${tgts})
 
 # copy FFmpeg dll to the output folder
 if(WIN32 AND HAVE_FFMPEG_WRAPPER)
-  if(MSVC64 OR MINGW64)
-    set(FFMPEG_SUFFIX "_64")
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(FFMPEG_SUFFIX _64)
   endif()
   set(ffmpeg_dir "${OpenCV_BINARY_DIR}/3rdparty/ffmpeg")
   set(ffmpeg_bare_name "opencv_videoio_ffmpeg${FFMPEG_SUFFIX}.dll")
@@ -221,7 +208,6 @@ if(WIN32 AND HAVE_FFMPEG_WRAPPER)
   endif()
   install(FILES "${ffmpeg_path}" DESTINATION ${OPENCV_BIN_INSTALL_PATH} COMPONENT libs RENAME "${ffmpeg_bare_name_ver}")
   if(INSTALL_CREATE_DISTRIB)
-    install(FILES "${ffmpeg_dir}/opencv_videoio_ffmpeg.dll" DESTINATION "bin/" COMPONENT libs RENAME "opencv_videoio_ffmpeg${OPENCV_DLLVERSION}.dll")
-    install(FILES "${ffmpeg_dir}/opencv_videoio_ffmpeg_64.dll" DESTINATION "bin/" COMPONENT libs RENAME "opencv_videoio_ffmpeg${OPENCV_DLLVERSION}_64.dll")
+    install(FILES "${ffmpeg_dir}/opencv_videoio_ffmpeg${FFMPEG_SUFFIX}.dll" DESTINATION "bin/" COMPONENT libs RENAME "opencv_videoio_ffmpeg${OPENCV_DLLVERSION}${FFMPEG_SUFFIX}.dll")
   endif()
 endif()

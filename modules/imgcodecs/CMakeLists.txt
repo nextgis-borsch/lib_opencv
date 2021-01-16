@@ -41,6 +41,11 @@ if(HAVE_TIFF)
   list(APPEND GRFMT_LIBS ${TIFF_LIBRARIES})
 endif()
 
+if(HAVE_OPENJPEG)
+  ocv_include_directories(${OPENJPEG_INCLUDE_DIRS})
+  list(APPEND GRFMT_LIBS ${OPENJPEG_LIBRARIES})
+endif()
+
 if(HAVE_JASPER)
   ocv_include_directories(${JASPER_INCLUDE_DIRS})
   list(APPEND GRFMT_LIBS ${JASPER_LIBRARIES})
@@ -54,6 +59,22 @@ endif()
 if(HAVE_GDAL)
   include_directories(SYSTEM ${GDAL_INCLUDE_DIRS})
   list(APPEND GRFMT_LIBS ${GDAL_LIBRARIES})
+endif()
+
+if(HAVE_IMGCODEC_HDR)
+  add_definitions(-DHAVE_IMGCODEC_HDR)
+endif()
+
+if(HAVE_IMGCODEC_SUNRASTER)
+  add_definitions(-DHAVE_IMGCODEC_SUNRASTER)
+endif()
+
+if(HAVE_IMGCODEC_PXM)
+  add_definitions(-DHAVE_IMGCODEC_PXM)
+endif()
+
+if (HAVE_IMGCODEC_PFM)
+  add_definitions(-DHAVE_IMGCODEC_PFM)
 endif()
 
 file(GLOB grfmt_hdrs ${CMAKE_CURRENT_LIST_DIR}/src/grfmt*.hpp)
@@ -79,20 +100,25 @@ set(imgcodecs_srcs
     )
 
 file(GLOB imgcodecs_ext_hdrs
-     "${CMAKE_CURRENT_LIST_DIR}/include/opencv2/*.hpp"
-     "${CMAKE_CURRENT_LIST_DIR}/include/opencv2/${name}/*.hpp"
-     "${CMAKE_CURRENT_LIST_DIR}/include/opencv2/${name}/*.h"
-     )
+    "${CMAKE_CURRENT_LIST_DIR}/include/opencv2/*.hpp"
+    "${CMAKE_CURRENT_LIST_DIR}/include/opencv2/${name}/*.hpp"
+    "${CMAKE_CURRENT_LIST_DIR}/include/opencv2/${name}/*.h"
+    "${CMAKE_CURRENT_LIST_DIR}/include/opencv2/${name}/legacy/*.h"
+    )
 
 if(IOS)
   list(APPEND imgcodecs_srcs ${CMAKE_CURRENT_LIST_DIR}/src/ios_conversions.mm)
   list(APPEND IMGCODECS_LIBRARIES "-framework Accelerate" "-framework CoreGraphics" "-framework QuartzCore" "-framework AssetsLibrary")
 endif()
-# if(OSX_FRAMEWORK)
+if(OSX_FRAMEWORK)
 #   list(APPEND IMGCODECS_LIBRARIES "-framework UIKit")
-# endif()
+    list(APPEND imgcodecs_srcs ${CMAKE_CURRENT_LIST_DIR}/src/apple_conversions.h)
+    list(APPEND imgcodecs_srcs ${CMAKE_CURRENT_LIST_DIR}/src/apple_conversions.mm)
+    list(APPEND imgcodecs_srcs ${CMAKE_CURRENT_LIST_DIR}/src/macosx_conversions.mm)
+    list(APPEND IMGCODECS_LIBRARIES "-framework AppKit" "-framework Accelerate" "-framework CoreGraphics" "-framework QuartzCore")
+endif()
 
-if(UNIX)
+if(TRUE)
   #these variables are set by CHECK_MODULE macro
   foreach(P ${IMGCODECS_INCLUDE_DIRS})
     ocv_include_directories(${P})
