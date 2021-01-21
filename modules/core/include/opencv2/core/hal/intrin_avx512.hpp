@@ -11,6 +11,10 @@
 # pragma warning(disable:4310)  // cast truncates constant value
 #endif
 
+#ifndef _MM_PERM_ACBD
+#define _MM_PERM_ACBD 0x27
+#endif
+
 #define CVT_ROUND_MODES_IMPLEMENTED 0
 
 #define CV_SIMD512 1
