@@ -222,6 +222,8 @@ modules/ts/src,modules/ts/src,,"cpp,hpp,h"
 modules/video,modules/video,,
 modules/video/include,modules/video/include,,"cpp,hpp,h"
 modules/video/include/opencv2,modules/video/include/opencv2,,"cpp,hpp,h"
+modules/video/include/opencv2/video/detail,modules/video/include/opencv2/video/detail,,"cpp,hpp,h"
+modules/video/include/opencv2/video/legacy,modules/video/include/opencv2/video/legacy,,"cpp,hpp,h"
 modules/video/include/opencv2/video,modules/video/include/opencv2/video,,"cpp,hpp,h"
 modules/video/misc,modules/video/misc,skip,
 modules/video/perf,modules/video/perf,,"cpp,hpp,h"
