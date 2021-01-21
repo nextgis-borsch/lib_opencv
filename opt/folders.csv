@@ -228,6 +228,7 @@ modules/video/perf,modules/video/perf,,"cpp,hpp,h"
 modules/video/perf/opencl,modules/video/perf/opencl,,"cpp,hpp,h"
 modules/video/src,modules/video/src,,"cpp,hpp,h"
 modules/video/src/opencl,modules/video/src/opencl,,"cpp,hpp,h,cl"
+modules/video/src/tracking,modules/video/src/tracking,,"cpp,hpp,h,cl"
 modules/video/test,modules/video/test,,"cpp,hpp,h"
 modules/video/test/ocl,modules/video/test/ocl,,"cpp,hpp,h"
 modules/videoio,modules/videoio,,

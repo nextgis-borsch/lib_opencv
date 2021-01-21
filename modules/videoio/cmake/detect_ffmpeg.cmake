@@ -9,20 +9,20 @@ if(NOT HAVE_FFMPEG AND OPENCV_FFMPEG_USE_FIND_PACKAGE)
   endif()
 endif()
 
-# if(NOT HAVE_FFMPEG AND WIN32 AND NOT ARM AND NOT OPENCV_FFMPEG_SKIP_DOWNLOAD)
-#   include("${OpenCV_SOURCE_DIR}/3rdparty/ffmpeg/ffmpeg.cmake")
-#   download_win_ffmpeg(FFMPEG_CMAKE_SCRIPT)
-#   if(FFMPEG_CMAKE_SCRIPT)
-#     include("${FFMPEG_CMAKE_SCRIPT}")
-#     set(FFMPEG_libavcodec_VERSION ${FFMPEG_libavcodec_VERSION} PARENT_SCOPE) # info
-#     set(FFMPEG_libavformat_VERSION ${FFMPEG_libavformat_VERSION} PARENT_SCOPE) # info
-#     set(FFMPEG_libavutil_VERSION ${FFMPEG_libavutil_VERSION} PARENT_SCOPE) # info
-#     set(FFMPEG_libswscale_VERSION ${FFMPEG_libswscale_VERSION} PARENT_SCOPE) # info
-#     set(FFMPEG_libavresample_VERSION ${FFMPEG_libavresample_VERSION} PARENT_SCOPE) # info
-#     set(HAVE_FFMPEG TRUE)
-#     set(HAVE_FFMPEG_WRAPPER TRUE)
-#   endif()
-# endif()
+if(NOT HAVE_FFMPEG AND WIN32 AND NOT ARM AND NOT OPENCV_FFMPEG_SKIP_DOWNLOAD)
+  include("${OpenCV_SOURCE_DIR}/3rdparty/ffmpeg/ffmpeg.cmake")
+  download_win_ffmpeg(FFMPEG_CMAKE_SCRIPT)
+  if(FFMPEG_CMAKE_SCRIPT)
+    include("${FFMPEG_CMAKE_SCRIPT}")
+    set(FFMPEG_libavcodec_VERSION ${FFMPEG_libavcodec_VERSION} PARENT_SCOPE) # info
+    set(FFMPEG_libavformat_VERSION ${FFMPEG_libavformat_VERSION} PARENT_SCOPE) # info
+    set(FFMPEG_libavutil_VERSION ${FFMPEG_libavutil_VERSION} PARENT_SCOPE) # info
+    set(FFMPEG_libswscale_VERSION ${FFMPEG_libswscale_VERSION} PARENT_SCOPE) # info
+    set(FFMPEG_libavresample_VERSION ${FFMPEG_libavresample_VERSION} PARENT_SCOPE) # info
+    set(HAVE_FFMPEG TRUE)
+    set(HAVE_FFMPEG_WRAPPER TRUE)
+  endif()
+endif()
 
 set(_required_ffmpeg_libraries libavcodec libavformat libavutil libswscale)
 set(_used_ffmpeg_libraries ${_required_ffmpeg_libraries})
